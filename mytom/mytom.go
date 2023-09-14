@@ -41,7 +41,6 @@ func NewMyTom(e, p string) *Mytom {
 }
 
 func (mt *Mytom) UseExampleIds() {
-
 	mt.activitiesID = append(mt.activitiesID, "205727472", "531746638", "108044668", "108044654")
 	log.Println("using hard coded array activity ids", len(mt.activitiesID))
 }
@@ -54,6 +53,7 @@ func (mt *Mytom) UseThisIdOnly(id string) {
 
 func (mt *Mytom) DownloadFit(destDir string) error {
 	log.Println("DownloadFit using target dir ", destDir)
+	start := time.Now()
 	// create a new collector
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"),
@@ -83,7 +83,7 @@ func (mt *Mytom) DownloadFit(destDir string) error {
 
 	c_para := 0
 	chunkNr := 0
-	chunkSize := 3
+	chunkSize := 5
 	var res *InfoDownFit
 	log.Printf("Request for %d activities in download chunk size %d\n", len(mt.activitiesID), chunkSize)
 
@@ -91,12 +91,12 @@ func (mt *Mytom) DownloadFit(destDir string) error {
 		go processActivity(actvno, c, destDir, chRes)
 
 		c_para += 1
-		if (ix%chunkSize) == 0 || (ix == len(mt.activitiesID)-1) {
+		if c_para == chunkSize || (ix == len(mt.activitiesID)-1) {
 			// blocking and wait for the chunk download termination
 			chunkNr += 1
-			log.Printf("blocking in chunk %d with %d download processes \n", chunkNr, c_para)
+			log.Printf("[ix => %d] blocking in chunk %d with %d download processes \n", ix, chunkNr, c_para)
 			chTimeout := make(chan struct{})
-			timeout := 30 * time.Second
+			timeout := 60 * time.Second
 			time.AfterFunc(timeout, func() {
 				chTimeout <- struct{}{}
 			})
@@ -109,7 +109,7 @@ func (mt *Mytom) DownloadFit(destDir string) error {
 					}
 					c_para -= 1
 					if c_para == 0 {
-						log.Printf("Chunk %d OK\n", chunkNr)
+						log.Printf("[ix => %d] chunk %d OK\n", ix, chunkNr)
 						break loop // continue with the next chunk
 					}
 				case <-chTimeout:
@@ -119,16 +119,19 @@ func (mt *Mytom) DownloadFit(destDir string) error {
 			}
 		}
 	}
-	log.Println("Processed activities count ", len(mt.activitiesID))
+	t := time.Now()
+	elapsed := t.Sub(start)
+	log.Printf("Processed %d Fit activities, time duration %v", len(mt.activitiesID), elapsed)
 	return nil
 }
 
-func processActivity(actvno string, c *colly.Collector, destDir string, chRes chan *InfoDownFit) {
+func processActivity(actvno string, corig *colly.Collector, destDir string, chRes chan *InfoDownFit) {
 	log.Printf("[%s] start processing", actvno)
 	infoFit := InfoDownFit{actvno: actvno, state: stOK}
 	sent := false
+	c := corig.Clone() // reset callbacks but not auth cookies so that we don't need a new login
 	c.OnResponse(func(r *colly.Response) {
-		log.Printf("[%s] response received size %d", infoFit.actvno, len(r.Body))
+		log.Printf("[%s] response received status %d size %d", infoFit.actvno, r.StatusCode, len(r.Body))
 		fnn := fmt.Sprintf("%s/act_%s.fit", destDir, actvno)
 		if err := os.WriteFile(fnn, r.Body, 0644); err != nil {
 			log.Println("File write error ", err)
@@ -141,7 +144,9 @@ func processActivity(actvno string, c *colly.Collector, destDir string, chRes ch
 	})
 
 	c.OnResponseHeaders(func(r *colly.Response) {
-		log.Printf("[%s] response headers %d", infoFit.actvno, r.StatusCode)
+		if r.StatusCode != 200 {
+			log.Printf("[%s] response headers %d", infoFit.actvno, r.StatusCode)
+		}
 		if r.StatusCode == 403 {
 			log.Printf("[%s] something is wrong with AUTH", actvno)
 			infoFit.state = stError
