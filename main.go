@@ -4,8 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"mytom/conf"
-	"mytom/mytom"
+	"mysportsToFit/conf"
+	"mysportsToFit/mytom"
 	"os"
 )
 
@@ -18,7 +18,7 @@ func main() {
 	var ver = flag.Bool("ver", false, "Prints the current version")
 	var configfile = flag.String("config", "config.toml", "Configuration file path")
 	var outdir = flag.String("outdir", "./dest", "output directory for downloaded fit files")
-	var withexample = flag.Bool("withexample", false, "use example ids to check if it works")
+	var withexample = flag.Bool("withexample", false, "use hard coded example ids to test the download (you need a rebuild if you want to use your ids)")
 	var idonly = flag.String("idonly", "", "for example 205727472 to download only one fit activity id")
 	flag.Parse()
 

@@ -1,4 +1,4 @@
-module mytom
+module mysportsToFit
 
 go 1.21.1
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/gocolly/colly/v2"
 )
@@ -14,14 +15,20 @@ const (
 	stLogin MytomState = iota
 	stRequest
 	stError
+	stOK
 )
 
 type Mytom struct {
 	email        string
 	password     string
 	state        MytomState
-	lasterr      error
 	activitiesID []string
+}
+
+type InfoDownFit struct {
+	state   MytomState
+	lasterr error
+	actvno  string
 }
 
 func NewMyTom(e, p string) *Mytom {
@@ -34,12 +41,15 @@ func NewMyTom(e, p string) *Mytom {
 }
 
 func (mt *Mytom) UseExampleIds() {
-	mt.activitiesID = append(mt.activitiesID, "205727472", "531746638")
+
+	mt.activitiesID = append(mt.activitiesID, "205727472", "531746638", "108044668", "108044654")
+	log.Println("using hard coded array activity ids", len(mt.activitiesID))
 }
 
 func (mt *Mytom) UseThisIdOnly(id string) {
 	mt.activitiesID = make([]string, 1)
 	mt.activitiesID[0] = id
+	log.Println("using only one id ", id)
 }
 
 func (mt *Mytom) DownloadFit(destDir string) error {
@@ -69,39 +79,99 @@ func (mt *Mytom) DownloadFit(destDir string) error {
 		log.Println("Login ok")
 	}
 	mt.state = stRequest
+	chRes := make(chan *InfoDownFit)
 
-	for _, actvno := range mt.activitiesID {
-		//actvno := "205727472" //"531746638"
-		log.Println("Processing activity ", actvno)
-		c.OnResponse(func(r *colly.Response) {
-			log.Println("response received", r.StatusCode) //, string(r.Body))
-			fnn := fmt.Sprintf("%s/act_%s.fit", destDir, actvno)
-			if err := os.WriteFile(fnn, r.Body, 0644); err != nil {
-				log.Println("File write error ", err)
-				mt.lasterr = err
-				mt.state = stError
-				return
-			}
-			log.Println("File written: ", fnn)
-		})
+	c_para := 0
+	chunkNr := 0
+	chunkSize := 3
+	var res *InfoDownFit
+	log.Printf("Request for %d activities in download chunk size %d\n", len(mt.activitiesID), chunkSize)
 
-		c.OnResponseHeaders(func(r *colly.Response) {
-			log.Println("Response headers: ", r)
-			if r.StatusCode == 403 {
-				log.Println("Something is wrong with AUTH")
-				mt.state = stError
+	for ix, actvno := range mt.activitiesID {
+		go processActivity(actvno, c, destDir, chRes)
+
+		c_para += 1
+		if (ix%chunkSize) == 0 || (ix == len(mt.activitiesID)-1) {
+			// blocking and wait for the chunk download termination
+			chunkNr += 1
+			log.Printf("blocking in chunk %d with %d download processes \n", chunkNr, c_para)
+			chTimeout := make(chan struct{})
+			timeout := 30 * time.Second
+			time.AfterFunc(timeout, func() {
+				chTimeout <- struct{}{}
+			})
+		loop:
+			for {
+				select {
+				case res = <-chRes:
+					if res.state == stError {
+						return res.lasterr
+					}
+					c_para -= 1
+					if c_para == 0 {
+						log.Printf("Chunk %d OK\n", chunkNr)
+						break loop // continue with the next chunk
+					}
+				case <-chTimeout:
+					// something wrong
+					return fmt.Errorf("download timeout error")
+				}
 			}
-		})
-		if mt.state == stError {
-			return fmt.Errorf("scraper in wrong state %v", mt.lasterr)
 		}
-		// start scraping
-		//c.Visit("https://mysports.tomtom.com/app/activities/")
-		// You can see the activity in the browser: uri: fmt.Sprintf("https://mysports.tomtom.com/app/activity/%s/", actvno)
-		// You download the activity using the web api
-		uri := fmt.Sprintf("https://mysports.tomtom.com/service/webapi/v2/activity/%s?dv=1.3&format=fit", actvno)
-		c.Visit(uri)
 	}
 	log.Println("Processed activities count ", len(mt.activitiesID))
 	return nil
+}
+
+func processActivity(actvno string, c *colly.Collector, destDir string, chRes chan *InfoDownFit) {
+	log.Printf("[%s] start processing", actvno)
+	infoFit := InfoDownFit{actvno: actvno, state: stOK}
+	sent := false
+	c.OnResponse(func(r *colly.Response) {
+		log.Printf("[%s] response received size %d", infoFit.actvno, len(r.Body))
+		fnn := fmt.Sprintf("%s/act_%s.fit", destDir, actvno)
+		if err := os.WriteFile(fnn, r.Body, 0644); err != nil {
+			log.Println("File write error ", err)
+			infoFit.lasterr = err
+			infoFit.state = stError
+		}
+		chRes <- &infoFit
+		sent = true
+		log.Printf("[%s] file written: %s", infoFit.actvno, fnn)
+	})
+
+	c.OnResponseHeaders(func(r *colly.Response) {
+		log.Printf("[%s] response headers %d", infoFit.actvno, r.StatusCode)
+		if r.StatusCode == 403 {
+			log.Printf("[%s] something is wrong with AUTH", actvno)
+			infoFit.state = stError
+			infoFit.lasterr = fmt.Errorf("error with AUTH inside the dowload (login was successfully?)")
+			chRes <- &infoFit
+			sent = true
+		}
+	})
+
+	c.OnError(func(e *colly.Response, err error) {
+		log.Println("Error on scrap", err)
+		if !sent {
+			infoFit.lasterr = err
+			infoFit.state = stError
+			chRes <- &infoFit
+			sent = true
+		}
+	})
+
+	// start scraping
+	//c.Visit("https://mysports.tomtom.com/app/activities/")
+	// You can see the activity in the browser: uri: fmt.Sprintf("https://mysports.tomtom.com/app/activity/%s/", actvno)
+	// You download the activity using the web api
+	uri := fmt.Sprintf("https://mysports.tomtom.com/service/webapi/v2/activity/%s?dv=1.3&format=fit", actvno)
+	c.Visit(uri)
+
+	if !sent {
+		infoFit.lasterr = fmt.Errorf("[%s] download was somehow not working", infoFit.actvno)
+		infoFit.state = stError
+		chRes <- &infoFit
+		sent = true
+	}
 }
