@@ -2,7 +2,10 @@ module mytom
 
 go 1.21.1
 
-require github.com/gocolly/colly/v2 v2.1.0
+require (
+	github.com/BurntSushi/toml v0.3.1
+	github.com/gocolly/colly/v2 v2.1.0
+)
 
 require (
 	github.com/PuerkitoBio/goquery v1.5.1 // indirect

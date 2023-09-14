@@ -1,3 +1,5 @@
 /dest
 /source
 settings.json
+config.toml
+*.exe

@@ -1,68 +1,36 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
+	"mytom/conf"
+	"mytom/mytom"
 	"os"
+)
 
-	"github.com/gocolly/colly/v2"
+const (
+	Appname = "Mysports to Fit"
+	Buildnr = "00.02.20230914-00"
 )
 
 func main() {
-	// create a new collector
-	c := colly.NewCollector(
-		colly.UserAgent("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"),
-	)
+	var ver = flag.Bool("ver", false, "Prints the current version")
+	var configfile = flag.String("config", "config.toml", "Configuration file path")
+	var outdir = flag.String("outdir", "./dest", "output directory for downloaded fit files")
+	flag.Parse()
 
-	// authenticate
-	state := "login"
-	c.OnRequest(func(r *colly.Request) {
-		if state != "login" {
-			return
-		}
-		log.Println("OnRequest CB for login... ")
-		r.Headers.Set("Accept", "application/json, text/plain, */*")
-		r.Headers.Set("Content-Type", "application/json;charset=UTF-8")
-	})
-	//login is not a form but a json payload
-	payload := "<get this from settings.json>"
-	err := c.PostRaw("https://mysports.tomtom.com/service/webapi/v2/auth/user/login", []byte(payload))
-	if err != nil {
-		log.Fatalln("Login err:", err)
+	if *ver {
+		fmt.Printf("%s  version %s", Appname, Buildnr)
+		os.Exit(0)
 	}
-	state = "request"
-	actvno := "205727472" //"531746638"
-
-	// attach callbacks after login
-	c.OnResponse(func(r *colly.Response) {
-		log.Println("response received", r.StatusCode) //, string(r.Body))
-		fnn := fmt.Sprintf("./dest/act_%s.fit", actvno)
-		os.WriteFile(fnn, r.Body, 0644)
-		log.Println("File written: ", fnn)
-	})
-
-	c.OnResponseHeaders(func(r *colly.Response) {
-		log.Println("Response headers: ", r)
-		if r.StatusCode == 403 {
-			log.Println("Something is wrong with AUTH")
-		}
-	})
-
-	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		link := e.Attr("href")
-		log.Println("link is ", link)
-		// // If link start with browse or includes either signup or login return from callback
-		// if !strings.HasPrefix(link, "/browse") || strings.Index(link, "=signup") > -1 || strings.Index(link, "=login") > -1 {
-		// 	return
-		// }
-		// // start scaping the page under the link found
-		// e.Request.Visit(link)
-	})
-
-	// start scraping
-	//c.Visit("https://mysports.tomtom.com/app/activities/")
-	// You can see the activity in the browser: uri: fmt.Sprintf("https://mysports.tomtom.com/app/activity/%s/", actvno)
-	// You download the activity using the web api
-	uri := fmt.Sprintf("https://mysports.tomtom.com/service/webapi/v2/activity/%s?dv=1.3&format=fit", actvno)
-	c.Visit(uri)
+	current, err := conf.ReadConfig(*configfile)
+	if err != nil {
+		log.Fatal("Error on read config file", err)
+	}
+	mt := mytom.NewMyTom(current.Email, current.Password)
+	if err := mt.DownloadFit(*outdir); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("That's all folks!")
 }

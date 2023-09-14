@@ -1,0 +1,3 @@
+# Configuration file template. Use it to create a config.toml file
+Email = "<myemail>"
+Password = "<myPassword>"
