@@ -33,6 +33,15 @@ func NewMyTom(e, p string) *Mytom {
 	return &r
 }
 
+func (mt *Mytom) UseExampleIds() {
+	mt.activitiesID = append(mt.activitiesID, "205727472", "531746638")
+}
+
+func (mt *Mytom) UseThisIdOnly(id string) {
+	mt.activitiesID = make([]string, 1)
+	mt.activitiesID[0] = id
+}
+
 func (mt *Mytom) DownloadFit(destDir string) error {
 	log.Println("DownloadFit using target dir ", destDir)
 	// create a new collector
