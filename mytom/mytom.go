@@ -42,7 +42,7 @@ func NewMyTom(e, p string, size int) *Mytom {
 	return &r
 }
 
-func (mt *Mytom) UseExampleIds() {
+func (mt *Mytom) UseHardCodedIds() {
 	mt.activitiesID = append(mt.activitiesID, "205727472", "531746638", "108044668", "108044654")
 	log.Println("using hard coded array activity ids", len(mt.activitiesID))
 }

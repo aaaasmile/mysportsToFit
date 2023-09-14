@@ -26,7 +26,7 @@ Parsing the Hal file in order to create an activity list is a faster choice for 
 
 ## Build and use
 Clone the repository and create a config.toml file with your mysports credentials (email and password).
-Then, if you know one of your activity ids, you can try to download it in Fit format.
+Then, if you know one of your activity id (i.e. 205727472), you can try to download it in Fit format.
 The Powershell process: 
 
     git clone https://github.com/aaaasmile/mysportsToFit.git
@@ -35,7 +35,37 @@ The Powershell process:
     go build
     mkdir dest
     cp config_example.toml config.tom
-    .\mytom.exe -idonly 205727472
+    .\mysportsToFit.exe -idonly 205727472
 
+Hard coded ids could be downloaded with (function UseHardCodedIds):
+
+    .\mysportsToFit.exe -hardcoded
+Result is
+
+    go run .\main.go -hardcoded -chunksize 3  
+    
+    > using hard coded array activity ids 4
+    > DownloadFit using target dir  ./dest
+    > OnRequest CB for login...
+    > Login ok
+    > Request for 4 activities in download chunk size 3
+    > [ix => 2] blocking in chunk 1 with 3 download processes
+    > [205727472] start processing
+    > [531746638] start processing
+    > [108044668] start processing
+    > [531746638] response received status 200 size 2700
+    > [531746638] file written: ./dest/act_531746638.fit
+    > [108044668] response received status 200 size 71909
+    > [108044668] file written: ./dest/act_108044668.fit
+    > [205727472] response received status 200 size 119081
+    > [205727472] file written: ./dest/act_205727472.fit
+    > [ix => 2] chunk 1 OK (size 3)
+    > [ix => 3] blocking in chunk 2 with 1 download processes
+    > [108044654] start processing
+    > [108044654] response received status 200 size 71877
+    > [108044654] file written: ./dest/act_108044654.fit
+    > [ix => 3] chunk 2 OK (size 1)
+    > Processed 4 Fit activities, time duration 723.1546ms
+    > That's all folks!
 ## Status
 In progress.

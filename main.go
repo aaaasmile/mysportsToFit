@@ -18,7 +18,7 @@ func main() {
 	var ver = flag.Bool("ver", false, "Prints the current version")
 	var configfile = flag.String("config", "config.toml", "Configuration file path")
 	var outdir = flag.String("outdir", "./dest", "output directory for downloaded fit files")
-	var withexample = flag.Bool("withexample", false, "use hard coded example ids to test the download (you need a rebuild if you want to use your ids)")
+	var hardcoded = flag.Bool("hardcoded", false, "use hard coded ids for the download (you need to rebuild if you want to use your ids)")
 	var idonly = flag.String("idonly", "", "for example 205727472 to download only one fit activity id")
 	var chunksize = flag.Int("chunksize", 5, "number of parallel download processes")
 	flag.Parse()
@@ -33,8 +33,8 @@ func main() {
 	}
 	mt := mytom.NewMyTom(current.Email, current.Password, *chunksize)
 
-	if *withexample {
-		mt.UseExampleIds()
+	if *hardcoded {
+		mt.UseHardCodedIds()
 	} else if *idonly != "" {
 		mt.UseThisIdOnly(*idonly)
 	}
