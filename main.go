@@ -20,6 +20,7 @@ func main() {
 	var outdir = flag.String("outdir", "./dest", "output directory for downloaded fit files")
 	var withexample = flag.Bool("withexample", false, "use hard coded example ids to test the download (you need a rebuild if you want to use your ids)")
 	var idonly = flag.String("idonly", "", "for example 205727472 to download only one fit activity id")
+	var chunksize = flag.Int("chunksize", 5, "number of parallel download processes")
 	flag.Parse()
 
 	if *ver {
@@ -30,7 +31,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Error on read config file", err)
 	}
-	mt := mytom.NewMyTom(current.Email, current.Password)
+	mt := mytom.NewMyTom(current.Email, current.Password, *chunksize)
 
 	if *withexample {
 		mt.UseExampleIds()

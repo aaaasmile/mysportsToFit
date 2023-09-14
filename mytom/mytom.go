@@ -18,23 +18,25 @@ const (
 	stOK
 )
 
-type Mytom struct {
-	email        string
-	password     string
-	state        MytomState
-	activitiesID []string
-}
-
 type InfoDownFit struct {
 	state   MytomState
 	lasterr error
 	actvno  string
 }
 
-func NewMyTom(e, p string) *Mytom {
+type Mytom struct {
+	email        string
+	password     string
+	state        MytomState
+	activitiesID []string
+	chuncksize   int
+}
+
+func NewMyTom(e, p string, size int) *Mytom {
 	r := Mytom{
 		email:        e,
 		password:     p,
+		chuncksize:   size,
 		activitiesID: make([]string, 0),
 	}
 	return &r
@@ -83,7 +85,7 @@ func (mt *Mytom) DownloadFit(destDir string) error {
 
 	c_para := 0
 	chunkNr := 0
-	chunkSize := 5
+	chunkSize := mt.chuncksize
 	var res *InfoDownFit
 	log.Printf("Request for %d activities in download chunk size %d\n", len(mt.activitiesID), chunkSize)
 
@@ -100,6 +102,7 @@ func (mt *Mytom) DownloadFit(destDir string) error {
 			time.AfterFunc(timeout, func() {
 				chTimeout <- struct{}{}
 			})
+			num_in_chunk := c_para
 		loop:
 			for {
 				select {
@@ -109,7 +112,7 @@ func (mt *Mytom) DownloadFit(destDir string) error {
 					}
 					c_para -= 1
 					if c_para == 0 {
-						log.Printf("[ix => %d] chunk %d OK\n", ix, chunkNr)
+						log.Printf("[ix => %d] chunk %d OK (size %d)\n", ix, chunkNr, num_in_chunk)
 						break loop // continue with the next chunk
 					}
 				case <-chTimeout:
@@ -145,7 +148,7 @@ func processActivity(actvno string, corig *colly.Collector, destDir string, chRe
 
 	c.OnResponseHeaders(func(r *colly.Response) {
 		if r.StatusCode != 200 {
-			log.Printf("[%s] response headers %d", infoFit.actvno, r.StatusCode)
+			log.Printf("[%s] response headers %d is suspect", infoFit.actvno, r.StatusCode)
 		}
 		if r.StatusCode == 403 {
 			log.Printf("[%s] something is wrong with AUTH", actvno)
