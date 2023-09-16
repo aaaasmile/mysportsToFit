@@ -75,7 +75,11 @@ func (mt *Mytom) UseHalSource(source string) error {
 	return nil
 }
 
-func (mt *Mytom) DownloadFit(destDir string) error {
+func (mt *Mytom) DownloadFit(destDir string, nodownload bool) error {
+	if nodownload {
+		log.Println("Ready to download this activities, but stop here because nodownload ", mt.activitiesID)
+		return nil
+	}
 	log.Println("DownloadFit using target dir ", destDir)
 	start := time.Now()
 	// create a new collector

@@ -11,7 +11,7 @@ import (
 
 const (
 	Appname = "Mysports to Fit"
-	Buildnr = "00.02.20230914-00"
+	Buildnr = "00.02.20230916-00"
 )
 
 func main() {
@@ -22,6 +22,7 @@ func main() {
 	var idonly = flag.String("idonly", "", "for example 205727472 to download only one fit activity id")
 	var chunksize = flag.Int("chunksize", 5, "number of parallel download processes")
 	var source = flag.String("source", "", "Hal file path to get activity ids")
+	var nodownload = flag.Bool("nodownload", false, "prepare the activity list but do not exec the download")
 	flag.Parse()
 
 	if *ver {
@@ -48,7 +49,7 @@ func main() {
 		log.Fatal("No activity ids to downlad")
 	}
 
-	if err := mt.DownloadFit(*outdir); err != nil {
+	if err := mt.DownloadFit(*outdir, *nodownload); err != nil {
 		log.Fatal(err)
 	}
 	log.Println("That's all folks!")

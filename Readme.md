@@ -12,7 +12,7 @@ I don't want to download hundred of activities manually, so I have created this 
 MysportsToFit needs an array of activity numbers so that the Scraper Colly
 can download all the Fit files automatically.
 Where is this activity list? I got it using the Network Har log file from the browser.
-The Har file will be generated if you scroll the activity list using the Network tab inside the Developer Tool of the browser (F12 key to activate it in my Brave browser). 
+The Har file will be generated if you scroll the activity list using the Network tab inside the Developer Tool of the browser (F12 key to activate it in my Brave browser). See test-data directory for an example. 
 You scroll from the top to the bottom inside the activity list and your Network list will be filled out with all activity requests. Then export the Network session into an Har file.
 In this file the interesting part are lines like this:
 
@@ -67,5 +67,19 @@ Result is
     > [ix => 3] chunk 2 OK (size 1)
     > Processed 4 Fit activities, time duration 723.1546ms
     > That's all folks!
-## Status
-In progress.
+
+Using the Hal parser:
+
+    > .\mysportsToFit.exe -source .\source\all_other.har
+    > settings:  ./dest false  5 .\source\all_other.har
+    > Parsing source Hal file  .\source\all_other.har
+    > found 669 activities
+    > ...
+    > [531746638] file written: ./dest/act_531746638.fit
+    > [531746629] response received status 200 size 996
+    > [531746629] file written: ./dest/act_531746629.fit
+    > [531746636] response received status 200 size 73661
+    > [531746636] file written: ./dest/act_531746636.fit
+    > [ix => 668] chunk 134 OK (size 4)
+    > Processed 669 Fit activities, time duration 1m2.2273054s
+    > That's all folks!
