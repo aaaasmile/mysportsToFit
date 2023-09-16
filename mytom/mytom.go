@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/gocolly/colly/v2"
@@ -43,6 +44,7 @@ func NewMyTom(e, p string, size int) *Mytom {
 }
 
 func (mt *Mytom) UseHardCodedIds() {
+	mt.activitiesID = make([]string, 0)
 	mt.activitiesID = append(mt.activitiesID, "205727472", "531746638", "108044668", "108044654")
 	log.Println("using hard coded array activity ids", len(mt.activitiesID))
 }
@@ -51,6 +53,26 @@ func (mt *Mytom) UseThisIdOnly(id string) {
 	mt.activitiesID = make([]string, 1)
 	mt.activitiesID[0] = id
 	log.Println("using only one id ", id)
+}
+
+func (mt *Mytom) UseHalSource(source string) error {
+	log.Println("Parsing source Hal file ", source)
+	mt.activitiesID = make([]string, 0)
+	haltext, err := os.ReadFile(source)
+	if err != nil {
+		return err
+	}
+	rt, err := regexp.Compile(`https://mysports.tomtom.com/service/webapi/v2/activity/(?P<id>\d*)`)
+	if err != nil {
+		return err
+	}
+	ids := rt.FindAllStringSubmatch(string(haltext), -1)
+	for _, id := range ids {
+		//fmt.Println("*** id ", ix, id, id[1]) // array of 2 elements: [https://mysports.tomtom.com/service/webapi/v2/activity/103592966 103592966]
+		mt.activitiesID = append(mt.activitiesID, id[1])
+	}
+	log.Printf("found %d activities", len(mt.activitiesID))
+	return nil
 }
 
 func (mt *Mytom) DownloadFit(destDir string) error {

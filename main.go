@@ -21,6 +21,7 @@ func main() {
 	var hardcoded = flag.Bool("hardcoded", false, "use hard coded ids for the download (you need to rebuild if you want to use your ids)")
 	var idonly = flag.String("idonly", "", "for example 205727472 to download only one fit activity id")
 	var chunksize = flag.Int("chunksize", 5, "number of parallel download processes")
+	var source = flag.String("source", "", "Hal file path to get activity ids")
 	flag.Parse()
 
 	if *ver {
@@ -33,10 +34,18 @@ func main() {
 	}
 	mt := mytom.NewMyTom(current.Email, current.Password, *chunksize)
 
+	log.Println("settings: ", *outdir, *hardcoded, *idonly, *chunksize, *source)
+
 	if *hardcoded {
 		mt.UseHardCodedIds()
 	} else if *idonly != "" {
 		mt.UseThisIdOnly(*idonly)
+	} else if *source != "" {
+		if err := mt.UseHalSource(*source); err != nil {
+			log.Fatal("Hal processing error: ", err)
+		}
+	} else {
+		log.Fatal("No activity ids to downlad")
 	}
 
 	if err := mt.DownloadFit(*outdir); err != nil {
